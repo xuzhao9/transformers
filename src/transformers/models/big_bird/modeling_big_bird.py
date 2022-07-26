@@ -449,6 +449,10 @@ class BigBirdBlockSparseAttention(nn.Module):
     def generate_one_table(self, o_table, start_i, end_i, num_rand_blocks):
         return list(permutations(o_table[start_i:end_i], num_rand_blocks))
 
+    """
+    This function is used to generate the permutations table. The difference between it and _bigbird_block_rand_mask
+    is that it will generate all possible permutations rather than choosing one for each iteration.
+    """
     def generate_rand_attn_tables(self, from_seq_length, to_seq_length, from_block_size, to_block_size, num_rand_blocks, last_idx):
         all_tables = self.rand_attn_tables
         middle_seq = np.arange(1, to_seq_length // to_block_size - 1, dtype=np.int32)
@@ -459,31 +463,20 @@ class BigBirdBlockSparseAttention(nn.Module):
             start = i - 2
             end = i
             if i == 1:
-                # all_tables[i - 1] = np.random.permutation(middle_seq[2:last])[:r]
                 all_tables[i-1] = self.generate_one_table(middle_seq, 2, last, num_rand_blocks)
             elif i == 2:
-                # rand_attn[i - 1, :] = np.random.permutation(middle_seq[3:last])[:r]
                 all_tables[i-1] = self.generate_one_table(middle_seq, 3, last, num_rand_blocks)
             elif i == from_seq_length // from_block_size - 3:
-                # rand_attn[i - 1, :] = np.random.permutation(middle_seq[:last])[:r]
                 all_tables[i-1] = self.generate_one_table(middle_seq, 0, last, num_rand_blocks)
-            # Missing -3: should have been sliced till last-3
             elif i == from_seq_length // from_block_size - 2:
-                # rand_attn[i - 1, :] = np.random.permutation(middle_seq[:last])[:r]
                 all_tables[i-1] = self.generate_one_table(middle_seq, 0, last, num_rand_blocks)
-            # Missing -4: should have been sliced till last-4
             else:
                 if start > last:
                     start = last
-                    # rand_attn[i - 1, :] = np.random.permutation(middle_seq[:start])[:r]
                     all_tables[i-1] = self.generate_one_table(middle_seq, 0, start, num_rand_blocks)
                 elif (end + 1) == last:
-                    # rand_attn[i - 1, :] = np.random.permutation(middle_seq[:start])[:r]
                     all_tables[i-1] = self.generate_one_table(middle_seq, 0, start, num_rand_blocks)
                 else:
-                    # rand_attn[i - 1, :] = np.random.permutation(
-                    #     np.concatenate((middle_seq[:start], middle_seq[end + 1 : last]))
-                    # )[:r]
                     new_middle_seq = np.concatenate((middle_seq[:start], middle_seq[end + 1 : last]))
                     all_tables[i-1] = self.generate_one_table(new_middle_seq, 0, len(new_middle_seq), num_rand_blocks)
 
